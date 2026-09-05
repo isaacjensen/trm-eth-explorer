@@ -1,0 +1,27 @@
+node_modules/
+coverage/
+*.log
+
+# Local secrets / env
+.env
+.env.*
+!.env.example
+
+# Project-scoped AWS creds (personal account, never commit)
+.aws-local/
+
+# Local-dev machine-specific helper (corp CA path etc.)
+.localdev.sh
+
+# Private session handoff / interview strategy — never commit
+CONTEXT.md
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+
+.DS_Store
