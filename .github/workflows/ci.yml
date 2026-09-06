@@ -32,4 +32,5 @@ jobs:
           image-ref: trm-eth-explorer:${{ github.sha }}
           severity: CRITICAL,HIGH
           ignore-unfixed: true # only fail on vulns that have a fix available
+          trivyignores: .trivyignore # accepted base-image CVEs (our code/deps still hard-fail)
           exit-code: "1"

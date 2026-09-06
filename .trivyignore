@@ -1,0 +1,18 @@
+# Accepted, tracked base-image vulnerabilities. Our own code and dependencies still
+# hard-fail the scan — these exceptions are ONLY for the distroless base image.
+#
+# All of these are openssl (libssl3) CVEs in the distroless base. Debian has published a
+# fix, but the distroless base has not been rebuilt with it yet, and distroless has no
+# package manager, so we cannot patch openssl ourselves from the Dockerfile. Blocking
+# every deploy on an upstream base CVE outside our control is not viable; we accept these
+# explicitly and delete each line once the base image ships the fix.
+#
+# Reviewed: 2026-09-06. Revisit on the next base-image bump.
+# Production hardening: automate base rebuilds (Renovate) or use an aggressively-patched
+# base (e.g. Chainguard), plus a real risk-acceptance workflow instead of a flat file.
+CVE-2026-31789
+CVE-2026-28387
+CVE-2026-28388
+CVE-2026-28389
+CVE-2026-28390
+CVE-2026-45447
