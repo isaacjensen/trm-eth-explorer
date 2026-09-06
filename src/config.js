@@ -37,20 +37,27 @@ const config = {
     retries: intFromEnv('UPSTREAM_RETRIES', 1),
   },
   auth: {
-    // Bearer-JWT auth is enforced on the balance route ONLY when a signing secret is
-    // set; unset (dev/test default) leaves the endpoint open so local runs and tests
-    // aren't blocked. MVP verifies an HS256 token against this shared secret; in
-    // production this would verify RS256 against the IdP's JWKS. The secret is a secret
-    // — injected via env / k8s Secret, never committed or logged.
+    // Bearer-JWT auth on the balance route. In production the signing secret is REQUIRED
+    // (see the fail-closed check below) so the deployed service can never run open. In
+    // dev/test the endpoint is open when no secret is set, so local runs and tests aren't
+    // blocked. MVP verifies an HS256 token against this shared secret; production would
+    // verify RS256 against the IdP's JWKS. The secret is injected via env / k8s Secret,
+    // never committed or logged.
     jwtSecret: process.env.AUTH_JWT_SECRET || null,
     jwtAudience: process.env.AUTH_JWT_AUDIENCE || null,
     jwtIssuer: process.env.AUTH_JWT_ISSUER || null,
-    // Authorization: when auth is enabled, the token must carry this scope. Set to an
-    // empty string to require authentication only (no scope check). Default demonstrates
-    // authn + authz on the balance endpoint.
-    requiredScope:
-      process.env.AUTH_REQUIRED_SCOPE !== undefined ? process.env.AUTH_REQUIRED_SCOPE : 'balance:read',
+    // Authorization: an authenticated token must carry this scope. Overridable to a
+    // different scope name, but not disableable — always defaults to balance:read.
+    requiredScope: process.env.AUTH_REQUIRED_SCOPE || 'balance:read',
   },
 };
+
+// Fail closed in production: refuse to boot without an auth secret, so a misconfigured
+// deploy crashes loudly (caught by CI / CrashLoopBackoff) instead of silently serving
+// the balance endpoint with authentication disabled. Dev/test (NODE_ENV != production)
+// may run open for convenience.
+if (config.env === 'production' && !config.auth.jwtSecret) {
+  throw new Error('AUTH_JWT_SECRET is required when NODE_ENV=production (auth cannot be disabled in prod)');
+}
 
 module.exports = config;
