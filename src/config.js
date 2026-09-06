@@ -45,6 +45,11 @@ const config = {
     jwtSecret: process.env.AUTH_JWT_SECRET || null,
     jwtAudience: process.env.AUTH_JWT_AUDIENCE || null,
     jwtIssuer: process.env.AUTH_JWT_ISSUER || null,
+    // Authorization: when auth is enabled, the token must carry this scope. Set to an
+    // empty string to require authentication only (no scope check). Default demonstrates
+    // authn + authz on the balance endpoint.
+    requiredScope:
+      process.env.AUTH_REQUIRED_SCOPE !== undefined ? process.env.AUTH_REQUIRED_SCOPE : 'balance:read',
   },
 };
 

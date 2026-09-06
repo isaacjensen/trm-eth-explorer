@@ -25,7 +25,7 @@ const balanceRequests = new client.Counter({
 const authAttempts = new client.Counter({
   name: 'auth_attempts_total',
   help: 'Authentication attempts by outcome (only counted when auth is enabled)',
-  labelNames: ['outcome'], // ok | missing | invalid
+  labelNames: ['outcome'], // ok | missing | invalid | forbidden
   registers: [register],
 });
 

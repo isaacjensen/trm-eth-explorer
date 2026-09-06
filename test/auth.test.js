@@ -55,8 +55,17 @@ describe('JWT auth on the balance route', () => {
     expect(res.status).toBe(401);
   });
 
-  test('accepts a valid token (200)', async () => {
-    const token = jwt.sign({ sub: 'client' }, SECRET, { expiresIn: '5m' });
+  test('rejects a valid token lacking the balance:read scope (403)', async () => {
+    const token = jwt.sign({ sub: 'client', scope: 'profile:read' }, SECRET, { expiresIn: '5m' });
+    const res = await request(app)
+      .get(`/address/balance/${ADDR}`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({ error: 'insufficient_scope' });
+  });
+
+  test('accepts a valid token with the balance:read scope (200)', async () => {
+    const token = jwt.sign({ sub: 'client', scope: 'balance:read' }, SECRET, { expiresIn: '5m' });
     const res = await request(app)
       .get(`/address/balance/${ADDR}`)
       .set('Authorization', `Bearer ${token}`);
