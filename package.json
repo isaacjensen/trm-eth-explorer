@@ -11,7 +11,8 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "token": "node scripts/mint-token.js"
   },
   "engines": {
     "node": ">=18"
@@ -21,6 +22,7 @@
     "ethers": "^6.13.4",
     "express": "^4.21.1",
     "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.3",
     "pino": "^9.5.0",
     "pino-http": "^10.3.0",
     "prom-client": "^15.1.3"

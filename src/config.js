@@ -36,6 +36,21 @@ const config = {
     timeoutMs: intFromEnv('UPSTREAM_TIMEOUT_MS', 3000),
     retries: intFromEnv('UPSTREAM_RETRIES', 1),
   },
+  auth: {
+    // Bearer-JWT auth is enforced on the balance route ONLY when a signing secret is
+    // set; unset (dev/test default) leaves the endpoint open so local runs and tests
+    // aren't blocked. MVP verifies an HS256 token against this shared secret; in
+    // production this would verify RS256 against the IdP's JWKS. The secret is a secret
+    // — injected via env / k8s Secret, never committed or logged.
+    jwtSecret: process.env.AUTH_JWT_SECRET || null,
+    jwtAudience: process.env.AUTH_JWT_AUDIENCE || null,
+    jwtIssuer: process.env.AUTH_JWT_ISSUER || null,
+    // Authorization: when auth is enabled, the token must carry this scope. Set to an
+    // empty string to require authentication only (no scope check). Default demonstrates
+    // authn + authz on the balance endpoint.
+    requiredScope:
+      process.env.AUTH_REQUIRED_SCOPE !== undefined ? process.env.AUTH_REQUIRED_SCOPE : 'balance:read',
+  },
 };
 
 module.exports = config;

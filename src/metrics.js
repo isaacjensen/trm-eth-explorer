@@ -22,4 +22,11 @@ const balanceRequests = new client.Counter({
   registers: [register],
 });
 
-module.exports = { register, httpRequestDuration, balanceRequests };
+const authAttempts = new client.Counter({
+  name: 'auth_attempts_total',
+  help: 'Authentication attempts by outcome (only counted when auth is enabled)',
+  labelNames: ['outcome'], // ok | missing | invalid | forbidden
+  registers: [register],
+});
+
+module.exports = { register, httpRequestDuration, balanceRequests, authAttempts };
