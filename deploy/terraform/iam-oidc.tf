@@ -104,6 +104,15 @@ data "aws_iam_policy_document" "ci_permissions" {
     actions   = ["eks:DescribeCluster"]
     resources = [module.eks.cluster_arn]
   }
+
+  # Read the app secret at deploy time to materialize the k8s Secret. Scoped to this one
+  # secret's ARN — read-only, no create/update/delete, no other secrets.
+  statement {
+    sid       = "SecretsManagerReadAppSecret"
+    effect    = "Allow"
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = [aws_secretsmanager_secret.app.arn]
+  }
 }
 
 resource "aws_iam_role_policy" "ci_permissions" {
