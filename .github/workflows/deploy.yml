@@ -1,0 +1,96 @@
+name: Deploy
+
+# On merge to main: build a SHA-tagged image, push to ECR, deploy to staging, then to
+# prod behind a manual approval gate (the GitHub "production" environment). AWS access is
+# via OIDC — the workflow assumes the scoped CI role, no static keys.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write # required to request the OIDC token
+  contents: read
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.CI_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Log in to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Build and push (immutable SHA tag)
+        run: |
+          IMAGE="${{ vars.ECR_REPOSITORY }}:${{ github.sha }}"
+          docker build -f deploy/Dockerfile -t "$IMAGE" .
+          docker push "$IMAGE"
+
+  deploy-staging:
+    needs: build-push
+    runs-on: ubuntu-latest
+    environment: staging # OIDC sub becomes ...:environment:staging (allowlisted in the trust policy)
+    env:
+      APP_SECRET_ID: ${{ vars.APP_SECRET_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.CI_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Point kubectl at the cluster
+        run: aws eks update-kubeconfig --region ${{ vars.AWS_REGION }} --name ${{ vars.EKS_CLUSTER_NAME }}
+      - name: Sync k8s Secret from Secrets Manager
+        run: ./scripts/sync-secret.sh staging
+      - name: Helm deploy
+        run: |
+          helm upgrade --install trm-eth-explorer deploy/helm/trm-eth-explorer \
+            --namespace staging \
+            -f deploy/helm/trm-eth-explorer/values-staging.yaml \
+            --set image.repository=${{ vars.ECR_REPOSITORY }} \
+            --set image.tag=${{ github.sha }} \
+            --wait --atomic --timeout 5m
+      - name: Set up Node (mint-token for the smoke test)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: npm
+      - run: npm ci
+      - name: Smoke test (authenticated balance call)
+        run: ./scripts/smoke-test.sh staging
+
+  deploy-prod:
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    environment: production # required-reviewer gate: this job pauses until approved
+    env:
+      APP_SECRET_ID: ${{ vars.APP_SECRET_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.CI_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Point kubectl at the cluster
+        run: aws eks update-kubeconfig --region ${{ vars.AWS_REGION }} --name ${{ vars.EKS_CLUSTER_NAME }}
+      - name: Sync k8s Secret from Secrets Manager
+        run: ./scripts/sync-secret.sh prod
+      - name: Helm deploy
+        run: |
+          helm upgrade --install trm-eth-explorer deploy/helm/trm-eth-explorer \
+            --namespace prod \
+            -f deploy/helm/trm-eth-explorer/values-prod.yaml \
+            --set image.repository=${{ vars.ECR_REPOSITORY }} \
+            --set image.tag=${{ github.sha }} \
+            --wait --atomic --timeout 5m
+      - name: Set up Node (mint-token for the smoke test)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: npm
+      - run: npm ci
+      - name: Smoke test (authenticated balance call)
+        run: ./scripts/smoke-test.sh prod

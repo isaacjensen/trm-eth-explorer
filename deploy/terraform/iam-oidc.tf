@@ -51,10 +51,16 @@ data "aws_iam_policy_document" "ci_trust" {
       values   = ["sts.amazonaws.com"]
     }
 
+    # Explicit allowlist of exact `sub` values (NO wildcards). Three contexts, all for
+    # this repo only: the main-branch push (build/push job, no environment) and the two
+    # deploy environments (their jobs carry an environment: sub instead of a ref: sub).
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repo}:ref:${var.github_deploy_ref}"]
+      values = concat(
+        ["repo:${var.github_repo}:ref:${var.github_deploy_ref}"],
+        [for env in var.github_environments : "repo:${var.github_repo}:environment:${env}"],
+      )
     }
   }
 }

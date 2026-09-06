@@ -1,0 +1,36 @@
+name: CI
+
+# PR checks only — fast feedback, no AWS, no deploy. Merging to main triggers deploy.yml.
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+
+  build-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # No corp CA needed here — GitHub runners have no TLS interception, so npm ci in the
+      # build uses the public chain.
+      - name: Build image
+        run: docker build -f deploy/Dockerfile -t trm-eth-explorer:${{ github.sha }} .
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: trm-eth-explorer:${{ github.sha }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true # only fail on vulns that have a fix available
+          trivyignores: .trivyignore # accepted base-image CVEs (our code/deps still hard-fail)
+          exit-code: "1"
