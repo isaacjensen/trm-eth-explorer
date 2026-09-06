@@ -27,7 +27,7 @@ jobs:
       - name: Build image
         run: docker build -f deploy/Dockerfile -t trm-eth-explorer:${{ github.sha }} .
       - name: Trivy image scan
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@v0.30.0
         with:
           image-ref: trm-eth-explorer:${{ github.sha }}
           severity: CRITICAL,HIGH
