@@ -1,0 +1,17 @@
+# Staging overlay: smaller and cheaper than prod; verbose logs for debugging.
+replicaCount: 1
+
+autoscaling:
+  minReplicas: 1
+  maxReplicas: 3
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 96Mi
+  limits:
+    cpu: 250m
+    memory: 192Mi
+
+env:
+  LOG_LEVEL: debug

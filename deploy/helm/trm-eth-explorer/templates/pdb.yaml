@@ -1,0 +1,13 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "trm-eth-explorer.fullname" . }}
+  labels:
+    {{- include "trm-eth-explorer.labels" . | nindent 4 }}
+spec:
+  # Keep at least this many pods during voluntary disruptions (node drains, cluster
+  # upgrades) so maintenance never takes the whole service down at once.
+  minAvailable: {{ .Values.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "trm-eth-explorer.selectorLabels" . | nindent 6 }}
