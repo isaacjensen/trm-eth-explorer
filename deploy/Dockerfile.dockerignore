@@ -1,0 +1,32 @@
+# BuildKit reads this per-Dockerfile ignore (deploy/Dockerfile.dockerignore) when
+# building with -f deploy/Dockerfile. Keep the build context minimal and secret-free.
+
+# Dependencies are reinstalled in the builder stage from the lockfile.
+node_modules
+
+# Secrets / local-only env — must never enter the build context.
+.env
+.env.*
+.aws-local
+.localdev.sh
+CONTEXT.md
+
+# Version control, tests, coverage, and dev config aren't needed in the image.
+.git
+.gitignore
+test
+coverage
+.nyc_output
+eslint.config.js
+jest.config.js
+
+# Docs (kept out of the image; project docs live in the repo, not the container).
+*.md
+
+# Editor / OS cruft.
+.DS_Store
+.vscode
+.idea
+
+# The deploy assets themselves aren't part of the app runtime.
+deploy
