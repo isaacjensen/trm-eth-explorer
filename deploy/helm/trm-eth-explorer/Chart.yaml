@@ -1,0 +1,7 @@
+apiVersion: v2
+name: trm-eth-explorer
+description: HTTP service returning the ETH balance of an address via Infura
+type: application
+# Chart version (bump on chart changes); appVersion tracks the app image.
+version: 0.1.0
+appVersion: "0.1.0"

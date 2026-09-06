@@ -1,0 +1,51 @@
+# Base values. Environment overlays (values-staging.yaml / values-prod.yaml) override the
+# few fields that differ. Image repo/tag are set at deploy time by CI (git SHA tag).
+
+image:
+  repository: "" # ECR repo URL, injected at deploy (terraform output ecr_repository_url)
+  tag: "" # git SHA, injected by CI
+  pullPolicy: IfNotPresent
+
+# Ignored when autoscaling.enabled (the HPA owns the replica count then).
+replicaCount: 2
+
+serviceAccount:
+  create: true
+  name: ""
+  # IRSA: set to an IAM role ARN when the app needs direct AWS access. Unused for the MVP
+  # (the app only reads CI-injected secrets), but this is the seam for per-workload AWS IAM.
+  roleArn: ""
+
+service:
+  port: 80
+  targetPort: 3000
+
+# Pre-created k8s Secret holding INFURA_API_KEY and AUTH_JWT_SECRET (CI creates it from
+# Secrets Manager at deploy time). The chart references it by name and never holds values.
+existingSecret: trm-eth-explorer-secrets
+
+# Non-secret config, passed as plain env. NODE_ENV=production is set in the template so the
+# app's fail-closed auth is active.
+env:
+  INFURA_NETWORK: mainnet
+  LOG_LEVEL: info
+  PORT: "3000"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  # CPU is the MVP signal. Note: this service is I/O-bound (waits on Infura), so
+  # request-rate/concurrency via a custom metric is the better production signal.
+  targetCPUUtilizationPercentage: 70
+
+pdb:
+  minAvailable: 1

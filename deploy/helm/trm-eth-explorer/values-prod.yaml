@@ -1,0 +1,10 @@
+# Prod overlay: more headroom than staging. (Base values already target prod-ish sizing;
+# this file is where prod-only deltas live as the service grows.)
+replicaCount: 2
+
+autoscaling:
+  minReplicas: 2
+  maxReplicas: 6
+
+env:
+  LOG_LEVEL: info
