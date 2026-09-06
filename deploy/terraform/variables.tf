@@ -40,3 +40,9 @@ variable "github_deploy_ref" {
   type        = string
   default     = "refs/heads/main"
 }
+
+variable "github_environments" {
+  description = "GitHub Actions environments permitted to assume the CI deploy role. Jobs that use `environment:` get a sub of ...:environment:<name> instead of ...:ref:<ref>."
+  type        = list(string)
+  default     = ["staging", "production"]
+}
