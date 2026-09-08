@@ -11,9 +11,9 @@ variable "cluster_name" {
 }
 
 variable "kubernetes_version" {
-  description = "EKS control-plane Kubernetes version."
+  description = "EKS control-plane Kubernetes version. Keep on a STANDARD_SUPPORT version — extended support ~6x's the control-plane cost. Check: aws eks describe-cluster-versions."
   type        = string
-  default     = "1.31"
+  default     = "1.34"
 }
 
 variable "node_instance_type" {
