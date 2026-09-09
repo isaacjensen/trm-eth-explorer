@@ -1,4 +1,4 @@
-const { isValidAddress } = require('../src/lib/validate');
+const { isValidAddress } = require('../src/utils/validate');
 
 describe('isValidAddress', () => {
   test('accepts the checksummed address from the exercise prompt', () => {

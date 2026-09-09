@@ -3,7 +3,7 @@
 const express = require('express');
 const helmet = require('helmet');
 const pinoHttp = require('pino-http');
-const logger = require('./lib/logger');
+const logger = require('./utils/logger');
 const { register, httpRequestDuration } = require('./metrics');
 const balanceRoute = require('./routes/balance');
 const healthRoute = require('./routes/health');

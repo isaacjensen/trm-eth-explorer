@@ -1,7 +1,7 @@
 const request = require('supertest');
 
 // Mock the domain service so the route/controller is tested in isolation. UpstreamError
-// comes from the real transport module (lib/ethRpc) so the controller's `instanceof`
+// comes from the real transport module (utils/ethRpc) so the controller's `instanceof`
 // check still works.
 jest.mock('../src/services/BalanceService', () => {
   const actual = jest.requireActual('../src/services/BalanceService');
@@ -9,7 +9,7 @@ jest.mock('../src/services/BalanceService', () => {
 });
 
 const { getBalanceEth } = require('../src/services/BalanceService');
-const { UpstreamError } = require('../src/lib/ethRpc');
+const { UpstreamError } = require('../src/utils/ethRpc');
 const { createApp } = require('../src/app');
 
 const app = createApp();

@@ -2,10 +2,10 @@
 
 const { formatEther } = require('ethers');
 const config = require('../config');
-const { rpcCall, withRetry } = require('../lib/ethRpc');
+const { rpcCall, withRetry } = require('../utils/ethRpc');
 
 // Domain service: turn an address into an ETH balance. Composes the JSON-RPC transport
-// (lib/ethRpc) with the balance-specific method and formatting. `ethers` is used only
+// (utils/ethRpc) with the balance-specific method and formatting. `ethers` is used only
 // for its well-tested wei->eth formatting (BigInt-safe), not for the network call.
 // New chain stats (tx count, code, etc.) would each be a sibling service reusing the
 // same transport.
