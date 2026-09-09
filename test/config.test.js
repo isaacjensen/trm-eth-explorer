@@ -30,3 +30,27 @@ describe('config: auth fail-closed in production', () => {
     expect(() => require('../src/config')).not.toThrow();
   });
 });
+
+// Fail-fast config: a misconfigured pod should crash at import, not serve broken responses.
+describe('config: fail-fast on bad env', () => {
+  const ORIGINAL_ENV = process.env;
+
+  beforeEach(() => {
+    jest.resetModules();
+    process.env = { ...ORIGINAL_ENV, INFURA_API_KEY: 'test-key' };
+  });
+
+  afterEach(() => {
+    process.env = ORIGINAL_ENV;
+  });
+
+  test('throws when a required env var (INFURA_API_KEY) is missing', () => {
+    delete process.env.INFURA_API_KEY;
+    expect(() => require('../src/config')).toThrow(/Missing required env var: INFURA_API_KEY/);
+  });
+
+  test('throws when an integer env var is non-numeric', () => {
+    process.env.UPSTREAM_TIMEOUT_MS = 'not-a-number';
+    expect(() => require('../src/config')).toThrow(/must be an integer/);
+  });
+});
