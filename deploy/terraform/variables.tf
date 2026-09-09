@@ -29,10 +29,15 @@ variable "app_namespaces" {
 }
 
 # --- GitHub OIDC federation (consumed by the CI deploy role trust policy) -----
-variable "github_repo" {
-  description = "owner/repo permitted to assume the CI deploy role via OIDC."
+# GitHub's default OIDC subject now embeds the IMMUTABLE owner-ID and repo-ID
+# (repo:<owner>@<owner_id>/<repo>@<repo_id>), not the plain repo:<owner>/<repo>. The trust
+# policy must match this exact prefix or AssumeRoleWithWebIdentity fails "Not authorized".
+# Bonus: pinning the numeric IDs means a repo/owner rename can't hijack the trust.
+# Verify with: gh api repos/<owner>/<repo>/actions/oidc/customization/sub
+variable "github_sub_prefix" {
+  description = "OIDC subject prefix GitHub issues for this repo (immutable-ID form)."
   type        = string
-  default     = "isaacjensen/trm-eth-explorer"
+  default     = "repo:isaacjensen@11186577/trm-eth-explorer@1358620534"
 }
 
 variable "github_deploy_ref" {
