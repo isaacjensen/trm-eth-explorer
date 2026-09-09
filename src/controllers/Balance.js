@@ -1,10 +1,10 @@
 'use strict';
 
-const { isValidAddress } = require('../lib/validate');
+const { isValidAddress } = require('../utils/validate');
 const { getBalanceEth } = require('../services/BalanceService');
-const { UpstreamError } = require('../lib/ethRpc');
+const { UpstreamError } = require('../utils/ethRpc');
 const { balanceRequests } = require('../metrics');
-const logger = require('../lib/logger');
+const logger = require('../utils/logger');
 
 // HTTP layer for balance lookups: validate input, call the service, shape the response
 // to the spec, and map errors to status codes. No business logic lives here.

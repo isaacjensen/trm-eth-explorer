@@ -6,7 +6,7 @@ require('dotenv').config();
 
 const { createApp } = require('./app');
 const config = require('./config');
-const logger = require('./lib/logger');
+const logger = require('./utils/logger');
 
 const app = createApp();
 const server = app.listen(config.port, () => {

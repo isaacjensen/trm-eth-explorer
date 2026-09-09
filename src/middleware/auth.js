@@ -2,7 +2,7 @@
 
 const jwt = require('jsonwebtoken');
 const config = require('../config');
-const logger = require('../lib/logger');
+const logger = require('../utils/logger');
 const { authAttempts } = require('../metrics');
 
 // Bearer-JWT authentication + scope authorization for protected routes.
