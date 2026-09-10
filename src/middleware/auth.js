@@ -15,7 +15,9 @@ const { authAttempts } = require('../metrics');
 // scrapers can't present a token.
 //
 // Two layers: authentication (valid signature/expiry) -> 401 on failure; authorization
-// (token carries config.auth.requiredScope) -> 403 on failure.
+// (token carries the route's required scope) -> 403 on failure. requireAuth is a factory:
+// each route passes the scope it needs, e.g. requireAuth('balance:read') /
+// requireAuth('transaction:read'), so different endpoints enforce different scopes.
 
 // Accepts OAuth-style space-delimited `scope` strings or array `scope`/`scp` claims.
 function extractScopes(payload) {
@@ -37,37 +39,41 @@ function forbidden(req, res, reason) {
   return res.status(403).json({ error: 'insufficient_scope' });
 }
 
-function requireAuth(req, res, next) {
-  // Auth disabled (no secret configured) — pass through.
-  if (!config.auth.jwtSecret) return next();
+// requiredScope defaults to config.auth.requiredScope (balance:read, overridable via
+// AUTH_REQUIRED_SCOPE) so a bare requireAuth() still behaves as before; routes pass an
+// explicit scope to enforce their own.
+function requireAuth(requiredScope = config.auth.requiredScope) {
+  return function (req, res, next) {
+    // Auth disabled (no secret configured) — pass through.
+    if (!config.auth.jwtSecret) return next();
 
-  const header = req.headers.authorization || '';
-  const [scheme, token] = header.split(' ');
-  if (scheme !== 'Bearer' || !token) {
-    return unauthorized(req, res, 'missing', 'missing or malformed bearer token');
-  }
+    const header = req.headers.authorization || '';
+    const [scheme, token] = header.split(' ');
+    if (scheme !== 'Bearer' || !token) {
+      return unauthorized(req, res, 'missing', 'missing or malformed bearer token');
+    }
 
-  let claims;
-  try {
-    const options = { algorithms: ['HS256'] };
-    if (config.auth.jwtAudience) options.audience = config.auth.jwtAudience;
-    if (config.auth.jwtIssuer) options.issuer = config.auth.jwtIssuer;
+    let claims;
+    try {
+      const options = { algorithms: ['HS256'] };
+      if (config.auth.jwtAudience) options.audience = config.auth.jwtAudience;
+      if (config.auth.jwtIssuer) options.issuer = config.auth.jwtIssuer;
 
-    // Throws on bad signature, expiry, or failed audience/issuer checks.
-    claims = jwt.verify(token, config.auth.jwtSecret, options);
-  } catch (err) {
-    return unauthorized(req, res, 'invalid', err.message);
-  }
+      // Throws on bad signature, expiry, or failed audience/issuer checks.
+      claims = jwt.verify(token, config.auth.jwtSecret, options);
+    } catch (err) {
+      return unauthorized(req, res, 'invalid', err.message);
+    }
 
-  // Authenticated. Now authorize: require the configured scope, if any.
-  const required = config.auth.requiredScope;
-  if (required && !extractScopes(claims).includes(required)) {
-    return forbidden(req, res, `token missing required scope: ${required}`);
-  }
+    // Authenticated. Now authorize: require this route's scope, if any.
+    if (requiredScope && !extractScopes(claims).includes(requiredScope)) {
+      return forbidden(req, res, `token missing required scope: ${requiredScope}`);
+    }
 
-  req.auth = claims;
-  authAttempts.inc({ outcome: 'ok' });
-  return next();
+    req.auth = claims;
+    authAttempts.inc({ outcome: 'ok' });
+    return next();
+  };
 }
 
 module.exports = { requireAuth };

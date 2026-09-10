@@ -22,6 +22,13 @@ const balanceRequests = new client.Counter({
   registers: [register],
 });
 
+const transactionRequests = new client.Counter({
+  name: 'transaction_requests_total',
+  help: 'Transaction lookups by outcome',
+  labelNames: ['outcome'], // success | invalid | not_found | upstream_error | error
+  registers: [register],
+});
+
 const authAttempts = new client.Counter({
   name: 'auth_attempts_total',
   help: 'Authentication attempts by outcome (only counted when auth is enabled)',
@@ -36,4 +43,11 @@ const cacheLookups = new client.Counter({
   registers: [register],
 });
 
-module.exports = { register, httpRequestDuration, balanceRequests, authAttempts, cacheLookups };
+module.exports = {
+  register,
+  httpRequestDuration,
+  balanceRequests,
+  transactionRequests,
+  authAttempts,
+  cacheLookups,
+};
