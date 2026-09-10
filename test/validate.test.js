@@ -1,4 +1,4 @@
-const { isValidAddress } = require('../src/utils/validate');
+const { isValidAddress, isValidTxHash } = require('../src/utils/validate');
 
 describe('isValidAddress', () => {
   test('accepts the checksummed address from the exercise prompt', () => {
@@ -25,5 +25,35 @@ describe('isValidAddress', () => {
     expect(isValidAddress(null)).toBe(false);
     expect(isValidAddress(undefined)).toBe(false);
     expect(isValidAddress(42)).toBe(false);
+  });
+});
+
+describe('isValidTxHash', () => {
+  const VALID = '0x' + 'a'.repeat(64);
+
+  test('accepts a well-formed 32-byte hash', () => {
+    expect(isValidTxHash(VALID)).toBe(true);
+  });
+
+  test('accepts mixed-case hex', () => {
+    expect(isValidTxHash('0x' + 'aB'.repeat(32))).toBe(true);
+  });
+
+  test('rejects an address-length value (40 hex, too short)', () => {
+    expect(isValidTxHash('0x' + 'a'.repeat(40))).toBe(false);
+  });
+
+  test('rejects non-hex characters', () => {
+    expect(isValidTxHash('0x' + 'z'.repeat(64))).toBe(false);
+  });
+
+  test('rejects a missing 0x prefix', () => {
+    expect(isValidTxHash('a'.repeat(64))).toBe(false);
+  });
+
+  test('rejects non-string input', () => {
+    expect(isValidTxHash(null)).toBe(false);
+    expect(isValidTxHash(undefined)).toBe(false);
+    expect(isValidTxHash(42)).toBe(false);
   });
 });

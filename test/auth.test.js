@@ -12,11 +12,17 @@ jest.mock('../src/services/BalanceService', () => {
   return { ...actual, getBalanceEth: jest.fn().mockResolvedValue('1.5') };
 });
 
+jest.mock('../src/services/TransactionService', () => {
+  const actual = jest.requireActual('../src/services/TransactionService');
+  return { ...actual, getTransactionByHash: jest.fn().mockResolvedValue({ hash: '0xtx' }) };
+});
+
 const { createApp } = require('../src/app');
 
 const app = createApp();
 const SECRET = 'test-signing-secret';
 const ADDR = '0xc94770007dda54cF92009BFF0dE90c06F603a09f';
+const TX_HASH = '0x' + 'a'.repeat(64);
 
 describe('JWT auth on the balance route', () => {
   test('rejects a request with no token (401)', async () => {
@@ -77,5 +83,48 @@ describe('JWT auth on the balance route', () => {
     expect((await request(app).get('/healthz')).status).toBe(200);
     expect((await request(app).get('/readyz')).status).toBe(200);
     expect((await request(app).get('/metrics')).status).toBe(200);
+  });
+});
+
+describe('per-route scope enforcement', () => {
+  test('transaction route rejects a balance:read-only token (403)', async () => {
+    const token = jwt.sign({ sub: 'client', scope: 'balance:read' }, SECRET, { expiresIn: '5m' });
+    const res = await request(app)
+      .get(`/transaction/${TX_HASH}`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({ error: 'insufficient_scope' });
+  });
+
+  test('transaction route accepts a transaction:read token (200)', async () => {
+    const token = jwt.sign({ sub: 'client', scope: 'transaction:read' }, SECRET, { expiresIn: '5m' });
+    const res = await request(app)
+      .get(`/transaction/${TX_HASH}`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(200);
+  });
+
+  test('balance route rejects a transaction:read-only token (403)', async () => {
+    const token = jwt.sign({ sub: 'client', scope: 'transaction:read' }, SECRET, { expiresIn: '5m' });
+    const res = await request(app)
+      .get(`/address/balance/${ADDR}`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(403);
+  });
+
+  test('a token carrying both scopes works on both routes (200/200)', async () => {
+    const token = jwt.sign(
+      { sub: 'client', scope: 'balance:read transaction:read' },
+      SECRET,
+      { expiresIn: '5m' },
+    );
+    const bal = await request(app)
+      .get(`/address/balance/${ADDR}`)
+      .set('Authorization', `Bearer ${token}`);
+    const tx = await request(app)
+      .get(`/transaction/${TX_HASH}`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(bal.status).toBe(200);
+    expect(tx.status).toBe(200);
   });
 });

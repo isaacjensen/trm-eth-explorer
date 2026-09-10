@@ -12,15 +12,19 @@
  * AWS creds), otherwise AUTH_JWT_SECRET from your environment / .env.
  *
  * Usage:
- *   node scripts/mint-token.js                 # scope "balance:read", expires in 1h
- *   node scripts/mint-token.js "wrong:scope"   # mint a token that will get a 403
+ *   node scripts/mint-token.js                          # default scopes, expires in 1h
+ *   node scripts/mint-token.js "balance:read"           # balance only (403 on /transaction)
+ *   node scripts/mint-token.js "wrong:scope"            # mint a token that will get a 403
+ *
+ * The default carries BOTH balance:read and transaction:read so one demo token works on
+ * every endpoint (and the CI smoke test, which mints a default token, still hits /balance).
  */
 
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
 
-// 1) Inputs, with sensible demo defaults.
-const scope = process.argv[2] || 'balance:read';
+// 1) Inputs, with sensible demo defaults. Space-delimited scopes (OAuth style).
+const scope = process.argv[2] || 'balance:read transaction:read';
 const expiresIn = process.argv[3] || '1h';
 const subject = process.env.TOKEN_SUB || 'demo-client';
 
