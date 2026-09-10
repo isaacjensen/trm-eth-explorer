@@ -1,41 +1,41 @@
 #!/usr/bin/env bash
-# Post-deploy smoke test. `helm --wait --atomic` is the primary gate (pods must pass
-# readiness or the release auto-rolls-back). This adds a real, END-TO-END check: mint a
-# valid token, then make an authenticated Balance API call and assert HTTP 200 with a
-# balance. A green run means: app up + auth working + Infura reachable + a real balance
-# returned. We reach the Service via `kubectl port-forward` to avoid waiting on the NLB.
 #
-# Note: this couples deploy success to Infura being reachable — deliberate here (we want
-# real-call confidence); a mature setup might use a synthetic check to avoid gating on
-# upstream health.
+# Post-deploy smoke test for a namespace (staging or prod).
+# Proves the deployment works end to end: mint a token, make a real authenticated
+# balance call, and confirm a balance comes back. `helm --wait --atomic` already
+# gated on the pods being healthy; this adds the real-call check on top.
+#
 set -euo pipefail
 
-NS="${1:?usage: smoke-test.sh <namespace>}"
-: "${APP_SECRET_ID:?APP_SECRET_ID must be set (mint-token reads the signing secret from it)}"
+# Which namespace to test.
+namespace="$1"
+if [ -z "$namespace" ]; then
+  echo "usage: smoke-test.sh <namespace>" >&2
+  exit 1
+fi
 
-SVC="trm-eth-explorer"
-LOCAL_PORT=18080
-ADDR="${SMOKE_ADDRESS:-0xc94770007dda54cF92009BFF0dE90c06F603a09f}" # prompt address (holds 0 ETH)
+address="0xc94770007dda54cF92009BFF0dE90c06F603a09f" # the prompt address (holds 0 ETH)
+url="http://localhost:18080"                          # local end of the port-forward below
 
-# 1) Mint a valid token (mint-token.js pulls AUTH_JWT_SECRET from Secrets Manager).
-TOKEN="$(node scripts/mint-token.js)"
+# Mint a token. mint-token.js reads the signing secret from Secrets Manager.
+token="$(node scripts/mint-token.js)"
+if [ -z "$token" ]; then
+  echo "failed to mint a token" >&2
+  exit 1
+fi
 
-# 2) Port-forward the in-cluster Service to the runner.
-kubectl port-forward -n "$NS" "svc/${SVC}" "${LOCAL_PORT}:80" >/dev/null 2>&1 &
-PF_PID=$!
-trap 'kill "$PF_PID" 2>/dev/null || true' EXIT
+# Open a port-forward to the in-cluster Service (avoids waiting on the NLB to provision).
+# It runs in the background; the trap stops it whenever this script exits.
+kubectl port-forward -n "$namespace" svc/trm-eth-explorer 18080:80 >/dev/null 2>&1 &
+port_forward_pid=$!
+trap "kill $port_forward_pid 2>/dev/null || true" EXIT
 
-# 3) Wait for the forward to be ready (health first — no auth needed).
-for _ in $(seq 1 20); do
-  curl -sf -o /dev/null "http://localhost:${LOCAL_PORT}/healthz" && break
-  sleep 1
-done
+# Wait for the port-forward to be ready via a health check (retries; no auth needed).
+curl --silent --fail --retry 20 --retry-connrefused --retry-delay 1 "$url/healthz" >/dev/null
 
-# 4) Real authenticated Balance API call — curl -sf fails the script on any non-2xx.
-RESP="$(curl -sf -H "Authorization: Bearer ${TOKEN}" \
-  "http://localhost:${LOCAL_PORT}/address/balance/${ADDR}")"
-echo "balance response: ${RESP}"
+# The real test: an authenticated balance call. --fail makes curl exit non-zero on any non-2xx.
+response="$(curl --silent --fail --header "Authorization: Bearer $token" "$url/address/balance/$address")"
 
-# 5) Assert the body actually carries a balance.
-echo "${RESP}" | jq -e 'has("balance")' >/dev/null
-echo "smoke OK (${NS}): authenticated balance call returned 200 with a balance"
+# Confirm the response actually contains a balance.
+echo "$response" | jq -e 'has("balance")' >/dev/null
+echo "smoke OK ($namespace): authenticated balance call returned 200 -> $response"
