@@ -30,6 +30,9 @@ env:
   INFURA_NETWORK: mainnet
   LOG_LEVEL: info
   PORT: "3000"
+  # Enable the short-TTL balance cache in deployed environments (off by default in code).
+  # 5s bounds staleness while collapsing repeat lookups of a hot address into one upstream call.
+  CACHE_TTL_MS: "5000"
 
 resources:
   requests:

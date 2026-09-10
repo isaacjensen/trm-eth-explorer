@@ -36,6 +36,14 @@ const config = {
     timeoutMs: intFromEnv('UPSTREAM_TIMEOUT_MS', 3000),
     retries: intFromEnv('UPSTREAM_RETRIES', 1),
   },
+  cache: {
+    // Short-TTL in-process cache of balances, to collapse repeat lookups of a hot address
+    // into one upstream call. Off by default (0) so dev/test are deterministic; the Helm
+    // chart enables it in staging/prod via CACHE_TTL_MS. Kept short on purpose: a balance
+    // can change every block, so the TTL is the accuracy-vs-load knob.
+    ttlMs: intFromEnv('CACHE_TTL_MS', 0),
+    maxEntries: intFromEnv('CACHE_MAX_ENTRIES', 10000),
+  },
   auth: {
     // Bearer-JWT auth on the balance route. In production the signing secret is REQUIRED
     // (see the fail-closed check below) so the deployed service can never run open. In

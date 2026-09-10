@@ -69,6 +69,20 @@ describe('getBalanceEth', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 
+  test('serves a second lookup from cache without a second upstream call', async () => {
+    // Distinct address so it can't collide with the other tests' shared cache instance.
+    const addr = '0xcache0000000000000000000000000000000cache';
+    const fetchImpl = jest.fn().mockResolvedValue(jsonResponse({ result: '0x0' }));
+
+    // cacheTtlMs > 0 enables the cache for these calls (default is 0 / disabled in test).
+    const first = await getBalanceEth(addr, { fetchImpl, cacheTtlMs: 1000 });
+    const second = await getBalanceEth(addr, { fetchImpl, cacheTtlMs: 1000 });
+
+    expect(first).toBe('0.0');
+    expect(second).toBe('0.0');
+    expect(fetchImpl).toHaveBeenCalledTimes(1); // second call was a cache hit
+  });
+
   test('maps a timeout to a 504 UpstreamError', async () => {
     const fetchImpl = jest.fn(
       (url, opts) =>
