@@ -100,3 +100,61 @@ describe('getBalanceEth', () => {
     ).rejects.toMatchObject({ status: 504 });
   });
 });
+
+describe('getBalanceEth caching', () => {
+  test('does not cache when the cache is disabled (the default)', async () => {
+    // No cacheTtlMs -> config default of 0 -> every call goes upstream.
+    const fetchImpl = jest.fn().mockResolvedValue(jsonResponse({ result: '0x0' }));
+    await getBalanceEth('0xdisabled1', { fetchImpl });
+    await getBalanceEth('0xdisabled1', { fetchImpl });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  test('caches each address independently', async () => {
+    const fetchImpl = jest.fn().mockResolvedValue(jsonResponse({ result: '0x0' }));
+    await getBalanceEth('0xindep0aaa', { fetchImpl, cacheTtlMs: 1000 }); // miss
+    await getBalanceEth('0xindep0bbb', { fetchImpl, cacheTtlMs: 1000 }); // miss
+    await getBalanceEth('0xindep0aaa', { fetchImpl, cacheTtlMs: 1000 }); // hit
+    await getBalanceEth('0xindep0bbb', { fetchImpl, cacheTtlMs: 1000 }); // hit
+    expect(fetchImpl).toHaveBeenCalledTimes(2); // one upstream call per distinct address
+  });
+
+  test('treats address casing as the same cache key', async () => {
+    const fetchImpl = jest.fn().mockResolvedValue(jsonResponse({ result: '0x0' }));
+    const lower = '0xcasetest000000000000000000000000000000aa';
+    await getBalanceEth(lower, { fetchImpl, cacheTtlMs: 1000 }); // miss
+    await getBalanceEth(lower.toUpperCase(), { fetchImpl, cacheTtlMs: 1000 }); // hit despite casing
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  test('does not cache a failed upstream call', async () => {
+    const fetchImpl = jest
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({}, 500)) // first call fails upstream
+      .mockResolvedValueOnce(jsonResponse({ result: '0x0' })); // a later call succeeds
+
+    await expect(
+      getBalanceEth('0xerrnocache', { fetchImpl, cacheTtlMs: 1000, retries: 0 }),
+    ).rejects.toMatchObject({ status: 502 });
+
+    // The error wasn't cached, so the next call goes upstream again and succeeds.
+    const balance = await getBalanceEth('0xerrnocache', { fetchImpl, cacheTtlMs: 1000, retries: 0 });
+    expect(balance).toBe('0.0');
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  test('refetches after the cached entry expires', async () => {
+    jest.useFakeTimers();
+    try {
+      const fetchImpl = jest.fn().mockResolvedValue(jsonResponse({ result: '0x0' }));
+      const addr = '0xexpiry00000000000000000000000000000000ff';
+      await getBalanceEth(addr, { fetchImpl, cacheTtlMs: 1000 }); // miss -> fetch
+      await getBalanceEth(addr, { fetchImpl, cacheTtlMs: 1000 }); // hit
+      jest.advanceTimersByTime(1001);
+      await getBalanceEth(addr, { fetchImpl, cacheTtlMs: 1000 }); // expired -> fetch again
+      expect(fetchImpl).toHaveBeenCalledTimes(2);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});
