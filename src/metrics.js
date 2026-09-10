@@ -29,4 +29,11 @@ const authAttempts = new client.Counter({
   registers: [register],
 });
 
-module.exports = { register, httpRequestDuration, balanceRequests, authAttempts };
+const cacheLookups = new client.Counter({
+  name: 'balance_cache_lookups_total',
+  help: 'In-process balance cache lookups by result (only counted when the cache is enabled)',
+  labelNames: ['result'], // hit | miss
+  registers: [register],
+});
+
+module.exports = { register, httpRequestDuration, balanceRequests, authAttempts, cacheLookups };
